@@ -1,0 +1,86 @@
+ .globl productExceptSelf
+.text
+productExceptSelf:
+    addi sp, sp, -16
+    sw ra, 12(sp)
+    sw s0, 8(sp)
+    sw s1, 4(sp)
+    sw s2, 0(sp)
+    
+    add s0, a0, x0          # s0 = nums[]
+    add s1, a1, x0          # s1 = numsSize
+    add s2, a2, x0          # s2 = answer[]
+    
+    li t0, 1           # t0 = left running product
+    li t1, 1           # t1 = right running product
+    addi t2, s1, -1    # t2 = right index
+    li t3, 0           # t3 = left index
+    
+    # Pre-compute first element
+    sw t0, 0(s2)       # answer[0] = 1
+    lw t4, 0(s0)       # t4 = nums[0]
+    mul t0, t0, t4     # update left running product
+    
+    # Pre-compute last element
+    slli t5, t2, 2
+    add t6, s0, t5
+    lw t4, 0(t6)       # t4 = nums[numsSize-1]
+    add t6, s2, t5
+    sw t1, 0(t6)       # answer[numsSize-1] = 1
+    mul t1, t1, t4     # update right running product
+    
+    addi t3, t3, 1     # left index++
+    addi t2, t2, -1    # right index--
+
+main_loop:
+    bge t3, t2, end_main_loop
+    
+    # Process left side
+    slli t5, t3, 2
+    add t6, s2, t5
+    sw t0, 0(t6)       # answer[left] = left running product
+    add t6, s0, t5
+    lw t4, 0(t6)       # t4 = nums[left]
+    mul t0, t0, t4     # update left running product
+    
+    # Process right side
+    slli t5, t2, 2
+    add t6, s2, t5
+    sw t1, 0(t6)       # answer[right] = right running product
+    add t6, s0, t5
+    lw t4, 0(t6)       # t4 = nums[right]
+    mul t1, t1, t4     # update right running product
+    
+    addi t3, t3, 1     # left index++
+    addi t2, t2, -1    # right index--
+    j main_loop
+
+end_main_loop:
+    # Handle middle element if odd number of elements
+    bne t3, t2, cleanup
+    slli t5, t3, 2
+    add t6, s2, t5
+    sw t0, 0(t6)       # answer[middle] = left running product
+    
+cleanup:
+    # Multiply left and right products
+    li t3, 0           # reset left index
+multiply_loop:
+    bge t3, s1, done
+    slli t5, t3, 2
+    add t6, s2, t5
+    lw t0, 0(t6)       # t0 = answer[i]
+    lw t1, 0(s0)       # t1 = nums[i]
+    mul t0, t0, t1     # answer[i] *= nums[i]
+    sw t0, 0(t6)       # store back to answer[i]
+    addi t3, t3, 1
+    addi s0, s0, 4     # move to next element in nums
+    j multiply_loop
+
+done:
+    lw s2, 0(sp)
+    lw s1, 4(sp)
+    lw s0, 8(sp)
+    lw ra, 12(sp)
+    addi sp, sp, 16
+    ret
